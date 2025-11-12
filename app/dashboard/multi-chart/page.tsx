@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import CandlestickChart from '@/components/CandlestickChart';
+import SymbolAutocomplete from '@/components/SymbolAutocomplete';
 
 interface CandleData {
   time: number;
@@ -110,9 +111,12 @@ export default function MultiChartPage() {
         chart.id === chartId ? { ...chart, symbol } : chart
       )
     );
+  };
 
+  const handleChartSymbolSelect = (chartId: string, symbol: string) => {
     const chart = charts.find((c) => c.id === chartId);
     if (chart) {
+      updateChartSymbol(chartId, symbol);
       fetchChartData(chartId, symbol, chart.timeframe);
     }
   };
@@ -201,10 +205,10 @@ export default function MultiChartPage() {
             {/* Chart controls */}
             <div className="mb-4 space-y-3">
               <div className="flex gap-2">
-                <input
-                  type="text"
+                <SymbolAutocomplete
                   value={chart.symbol}
-                  onChange={(e) => updateChartSymbol(chart.id, e.target.value.toUpperCase())}
+                  onChange={(value) => updateChartSymbol(chart.id, value)}
+                  onSelect={(symbol) => handleChartSymbolSelect(chart.id, symbol)}
                   placeholder="e.g., BTC/USDT"
                   className="flex-1 px-3 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
