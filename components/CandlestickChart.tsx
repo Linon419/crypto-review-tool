@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { createChart, IChartApi, ISeriesApi } from 'lightweight-charts';
-import { calculateSMA, calculateEMA, calculateRSI } from '@/lib/indicators';
+import { calculateSMA, calculateEMA, calculateRSI, calculateMACD, calculateBollingerBands } from '@/lib/indicators';
 
 interface CandleData {
   time: number;
@@ -20,6 +20,8 @@ interface ChartProps {
   showMA?: boolean;
   showEMA?: boolean;
   showRSI?: boolean;
+  showMACD?: boolean;
+  showBB?: boolean;
 }
 
 export default function CandlestickChart({
@@ -29,19 +31,26 @@ export default function CandlestickChart({
   showMA = true,
   showEMA = true,
   showRSI = false,
+  showMACD = false,
+  showBB = false,
 }: ChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const rsiContainerRef = useRef<HTMLDivElement>(null);
+  const macdContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const rsiChartRef = useRef<IChartApi | null>(null);
+  const macdChartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
 
   useEffect(() => {
     if (!chartContainerRef.current || data.length === 0) return;
 
-    // Calculate chart height based on viewport
+    // Calculate chart height based on viewport and active indicators
     const viewportHeight = window.innerHeight;
-    const mainChartHeight = showRSI ? viewportHeight - 280 : viewportHeight - 130;
+    let heightOffset = 130; // Base offset
+    if (showRSI) heightOffset += 150;
+    if (showMACD) heightOffset += 150;
+    const mainChartHeight = viewportHeight - heightOffset;
 
     // Create main chart
     const chart = createChart(chartContainerRef.current, {
@@ -103,6 +112,36 @@ export default function CandlestickChart({
         title: 'EMA(20)',
       });
       emaSeries.setData(ema20);
+    }
+
+    // Add Bollinger Bands
+    if (showBB) {
+      const bbData = calculateBollingerBands(data, 20, 2);
+
+      // Upper band
+      const upperBand = chart.addLineSeries({
+        color: '#a855f7',
+        lineWidth: 1,
+        title: 'BB Upper',
+      });
+      upperBand.setData(bbData.map(d => ({ time: d.time, value: d.upper })));
+
+      // Middle band
+      const middleBand = chart.addLineSeries({
+        color: '#ec4899',
+        lineWidth: 1,
+        lineStyle: 2, // Dashed
+        title: 'BB Middle',
+      });
+      middleBand.setData(bbData.map(d => ({ time: d.time, value: d.middle })));
+
+      // Lower band
+      const lowerBand = chart.addLineSeries({
+        color: '#a855f7',
+        lineWidth: 1,
+        title: 'BB Lower',
+      });
+      lowerBand.setData(bbData.map(d => ({ time: d.time, value: d.lower })));
     }
 
     // Add support level line
@@ -210,10 +249,100 @@ export default function CandlestickChart({
       });
     }
 
+    // Create MACD chart if enabled
+    let macdChart: IChartApi | null = null;
+    if (showMACD && macdContainerRef.current) {
+      macdChart = createChart(macdContainerRef.current, {
+        width: macdContainerRef.current.clientWidth,
+        height: 150,
+        layout: {
+          background: { color: '#1f2937' },
+          textColor: '#d1d5db',
+        },
+        grid: {
+          vertLines: { color: '#374151' },
+          horzLines: { color: '#374151' },
+        },
+        rightPriceScale: {
+          borderColor: '#4b5563',
+        },
+        timeScale: {
+          borderColor: '#4b5563',
+          timeVisible: true,
+          secondsVisible: false,
+          visible: false,
+        },
+      });
+
+      macdChartRef.current = macdChart;
+
+      const macdData = calculateMACD(data, 12, 26, 9);
+
+      // MACD line
+      const macdLine = macdChart.addLineSeries({
+        color: '#3b82f6',
+        lineWidth: 2,
+        title: 'MACD',
+      });
+      macdLine.setData(macdData.map(d => ({ time: d.time, value: d.macd })));
+
+      // Signal line
+      const signalLine = macdChart.addLineSeries({
+        color: '#f59e0b',
+        lineWidth: 2,
+        title: 'Signal',
+      });
+      signalLine.setData(macdData.map(d => ({ time: d.time, value: d.signal })));
+
+      // Histogram
+      const histogramSeries = macdChart.addHistogramSeries({
+        color: '#10b981',
+        priceFormat: {
+          type: 'price',
+          precision: 6,
+          minMove: 0.000001,
+        },
+      });
+      histogramSeries.setData(
+        macdData.map(d => ({
+          time: d.time,
+          value: d.histogram,
+          color: d.histogram >= 0 ? '#10b981' : '#ef4444',
+        }))
+      );
+
+      // Add zero line
+      const zeroLine = macdChart.addLineSeries({
+        color: '#6b7280',
+        lineWidth: 1,
+        lineStyle: 2,
+      });
+      zeroLine.setData([
+        { time: data[0].time, value: 0 },
+        { time: data[data.length - 1].time, value: 0 },
+      ]);
+
+      // Sync time scales
+      chart.timeScale().subscribeVisibleTimeRangeChange((timeRange) => {
+        if (timeRange && macdChart) {
+          macdChart.timeScale().setVisibleRange(timeRange);
+        }
+      });
+
+      macdChart.timeScale().subscribeVisibleTimeRangeChange((timeRange) => {
+        if (timeRange) {
+          chart.timeScale().setVisibleRange(timeRange);
+        }
+      });
+    }
+
     // Handle resize
     const handleResize = () => {
       const viewportHeight = window.innerHeight;
-      const newMainChartHeight = showRSI ? viewportHeight - 280 : viewportHeight - 130;
+      let heightOffset = 130;
+      if (showRSI) heightOffset += 150;
+      if (showMACD) heightOffset += 150;
+      const newMainChartHeight = viewportHeight - heightOffset;
 
       if (chartContainerRef.current && chartRef.current) {
         chartRef.current.applyOptions({
@@ -224,6 +353,11 @@ export default function CandlestickChart({
       if (showRSI && rsiContainerRef.current && rsiChartRef.current) {
         rsiChartRef.current.applyOptions({
           width: rsiContainerRef.current.clientWidth,
+        });
+      }
+      if (showMACD && macdContainerRef.current && macdChartRef.current) {
+        macdChartRef.current.applyOptions({
+          width: macdContainerRef.current.clientWidth,
         });
       }
     };
@@ -248,8 +382,16 @@ export default function CandlestickChart({
         }
         rsiChartRef.current = null;
       }
+      if (macdChartRef.current) {
+        try {
+          macdChartRef.current.remove();
+        } catch (error) {
+          // Chart already disposed, ignore error
+        }
+        macdChartRef.current = null;
+      }
     };
-  }, [data, supportLevel, resistanceLevel, showMA, showEMA, showRSI]);
+  }, [data, supportLevel, resistanceLevel, showMA, showEMA, showRSI, showMACD, showBB]);
 
   return (
     <div className="space-y-2">
@@ -260,6 +402,12 @@ export default function CandlestickChart({
       {showRSI && (
         <div
           ref={rsiContainerRef}
+          className="w-full bg-gray-800 rounded-lg border border-gray-700"
+        />
+      )}
+      {showMACD && (
+        <div
+          ref={macdContainerRef}
           className="w-full bg-gray-800 rounded-lg border border-gray-700"
         />
       )}

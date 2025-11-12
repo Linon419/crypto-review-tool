@@ -41,6 +41,12 @@ export default function Navbar() {
                 Chart
               </Link>
               <Link
+                href="/dashboard/multi-chart"
+                className={`px-3 py-2 rounded-md text-sm font-medium text-white transition ${isActive('/dashboard/multi-chart')}`}
+              >
+                Multi-Chart
+              </Link>
+              <Link
                 href="/dashboard/settings"
                 className={`px-3 py-2 rounded-md text-sm font-medium text-white transition ${isActive('/dashboard/settings')}`}
               >

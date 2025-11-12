@@ -32,6 +32,8 @@ function ChartContent() {
   const [showMA, setShowMA] = useState(true);
   const [showEMA, setShowEMA] = useState(true);
   const [showRSI, setShowRSI] = useState(false);
+  const [showMACD, setShowMACD] = useState(false);
+  const [showBB, setShowBB] = useState(false);
 
   useEffect(() => {
     fetchChartData();
@@ -183,11 +185,29 @@ function ChartContent() {
           <label className="flex items-center space-x-2 cursor-pointer">
             <input
               type="checkbox"
+              checked={showBB}
+              onChange={(e) => setShowBB(e.target.checked)}
+              className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-300">Bollinger Bands</span>
+          </label>
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="checkbox"
               checked={showRSI}
               onChange={(e) => setShowRSI(e.target.checked)}
               className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
             />
             <span className="text-sm text-gray-300">RSI(14)</span>
+          </label>
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showMACD}
+              onChange={(e) => setShowMACD(e.target.checked)}
+              className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-300">MACD</span>
           </label>
         </div>
 
@@ -224,6 +244,8 @@ function ChartContent() {
             showMA={showMA}
             showEMA={showEMA}
             showRSI={showRSI}
+            showMACD={showMACD}
+            showBB={showBB}
           />
         )}
 

@@ -1,4 +1,4 @@
-import { SMA, EMA, RSI, MACD } from 'technicalindicators';
+import { SMA, EMA, RSI, MACD, BollingerBands } from 'technicalindicators';
 
 interface CandleData {
   time: number;
@@ -75,5 +75,32 @@ export function calculateMACD(
     macd: result.MACD || 0,
     signal: result.signal || 0,
     histogram: result.histogram || 0,
+  }));
+}
+
+export interface BollingerBandsData {
+  time: number;
+  upper: number;
+  middle: number;
+  lower: number;
+}
+
+export function calculateBollingerBands(
+  data: CandleData[],
+  period: number = 20,
+  stdDev: number = 2
+): BollingerBandsData[] {
+  const closes = data.map((d) => d.close);
+  const bbResults = BollingerBands.calculate({
+    values: closes,
+    period,
+    stdDev,
+  });
+
+  return bbResults.map((result, index) => ({
+    time: data[index + period - 1].time,
+    upper: result.upper || 0,
+    middle: result.middle || 0,
+    lower: result.lower || 0,
   }));
 }
