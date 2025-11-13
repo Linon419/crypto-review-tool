@@ -68,10 +68,12 @@ export function calculateMACD(
     SimpleMASignal: false,
   });
 
-  const offset = slowPeriod + signalPeriod - 2;
+  // Calculate the starting index in the original data array
+  // MACD results will be shorter than the input data
+  const startIndex = data.length - macdResults.length;
 
   return macdResults.map((result, index) => ({
-    time: data[index + offset].time,
+    time: data[startIndex + index].time,
     macd: result.MACD || 0,
     signal: result.signal || 0,
     histogram: result.histogram || 0,
