@@ -54,8 +54,17 @@ function ChartContent() {
       const settingsToUse = currentSettings || settings;
 
       if (settingsToUse?.publishTime) {
-        // Fetch data with publish time constraints
-        await fetchChartDataWithPublishTime(settingsToUse);
+        // Use cached API for symbols with publish time
+        const apiUrl = `/api/klines-cached?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}`;
+        const response = await fetch(apiUrl);
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to fetch chart data');
+        }
+
+        console.log(result.cached ? '✓ Loaded from cache' : '⟳ Fetched from Binance and cached');
+        setData(result.data);
       } else {
         // Fetch latest data without time constraints
         const apiUrl = `/api/klines?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}&limit=500`;
@@ -73,138 +82,6 @@ function ChartContent() {
       setData([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchChartDataWithPublishTime = async (settingsToUse: Settings) => {
-    const publishDate = new Date(settingsToUse.publishTime);
-    const startTime = new Date(publishDate);
-    startTime.setDate(startTime.getDate() - 1); // 1 day before
-    const endTime = new Date(publishDate);
-    endTime.setDate(endTime.getDate() + 4); // 4 days after
-
-    const startTimestamp = startTime.getTime();
-    const endTimestamp = endTime.getTime();
-
-    // Calculate required data points based on timeframe
-    const timeframeToMinutes: { [key: string]: number } = {
-      '1m': 1,
-      '5m': 5,
-      '15m': 15,
-      '1h': 60,
-      '4h': 240,
-      '1d': 1440,
-    };
-
-    const minutesPerCandle = timeframeToMinutes[timeframe] || 60;
-    const totalMinutes = 5 * 24 * 60; // 5 days in minutes
-    const requiredLimit = Math.ceil(totalMinutes / minutesPerCandle);
-
-    // Binance API limit per request
-    const maxPerRequest = 1000;
-
-    console.log('Fetching data with publish time:', {
-      publishTime: settingsToUse.publishTime,
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
-      timeframe,
-      requiredLimit,
-      maxPerRequest,
-    });
-
-    // If required data fits in one request, fetch directly
-    if (requiredLimit <= maxPerRequest) {
-      const apiUrl = `/api/klines?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}&limit=${requiredLimit}&since=${startTimestamp}`;
-      const response = await fetch(apiUrl);
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch chart data');
-      }
-
-      let chartData = result.data;
-      chartData = chartData.filter((candle: CandleData) =>
-        candle.time * 1000 >= startTimestamp && candle.time * 1000 <= endTimestamp
-      );
-
-      console.log('Single batch fetch completed:', {
-        dataLength: chartData.length,
-      });
-
-      setData(chartData);
-    } else {
-      // Need multiple batches - fetch data in chunks
-      const numBatches = Math.ceil(requiredLimit / maxPerRequest);
-      let allData: CandleData[] = [];
-      let currentSince = startTimestamp;
-
-      console.log(`Fetching ${numBatches} batches of data...`);
-
-      for (let i = 0; i < numBatches; i++) {
-        // Check if we've reached the end time
-        if (currentSince >= endTimestamp) {
-          break;
-        }
-
-        const apiUrl = `/api/klines?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}&limit=${maxPerRequest}&since=${currentSince}`;
-
-        console.log(`Fetching batch ${i + 1}/${numBatches}...`);
-
-        const response = await fetch(apiUrl);
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error || 'Failed to fetch chart data');
-        }
-
-        const batchData = result.data as CandleData[];
-
-        if (batchData.length === 0) {
-          // No more data available
-          break;
-        }
-
-        // Add batch data to collection
-        allData = allData.concat(batchData);
-
-        // Update the 'since' timestamp for next batch
-        // Use the last candle's time + 1 timeframe interval
-        const lastCandle = batchData[batchData.length - 1];
-        currentSince = (lastCandle.time * 1000) + (minutesPerCandle * 60 * 1000);
-
-        // Check if we've passed the end time
-        if (currentSince >= endTimestamp) {
-          break;
-        }
-
-        // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-
-      // Remove duplicates and filter to time range
-      const uniqueData = Array.from(
-        new Map(allData.map(item => [item.time, item])).values()
-      );
-
-      let chartData = uniqueData.filter((candle: CandleData) =>
-        candle.time * 1000 >= startTimestamp && candle.time * 1000 <= endTimestamp
-      );
-
-      // Sort by time ascending
-      chartData.sort((a, b) => a.time - b.time);
-
-      console.log('Multi-batch fetch completed:', {
-        totalBatches: numBatches,
-        totalDataPoints: allData.length,
-        afterDeduplication: uniqueData.length,
-        afterFiltering: chartData.length,
-        dataRange: {
-          start: chartData[0] ? new Date(chartData[0].time * 1000).toISOString() : 'N/A',
-          end: chartData[chartData.length - 1] ? new Date(chartData[chartData.length - 1].time * 1000).toISOString() : 'N/A',
-        },
-      });
-
-      setData(chartData);
     }
   };
 

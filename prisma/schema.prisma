@@ -41,7 +41,27 @@ model CoinSettings {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  klines      Kline[]
 
   @@unique([userId, symbol])
   @@index([userId])
+}
+
+model Kline {
+  id               String        @id @default(cuid())
+  coinSettingsId   String
+  symbol           String
+  timeframe        String
+  time             Int           // Unix timestamp in seconds
+  open             Float
+  high             Float
+  low              Float
+  close            Float
+  volume           Float
+  createdAt        DateTime      @default(now())
+  coinSettings     CoinSettings  @relation(fields: [coinSettingsId], references: [id], onDelete: Cascade)
+
+  @@unique([coinSettingsId, timeframe, time])
+  @@index([coinSettingsId, timeframe])
+  @@index([symbol, timeframe, time])
 }
