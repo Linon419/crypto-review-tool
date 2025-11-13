@@ -3,7 +3,6 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import CandlestickChart from '@/components/CandlestickChart';
-import SymbolAutocomplete from '@/components/SymbolAutocomplete';
 
 interface CandleData {
   time: number;
@@ -83,7 +82,10 @@ function ChartContent() {
     }
   };
 
-  const handleSymbolSubmit = (newSymbol: string) => {
+  const handleSymbolChange = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const newSymbol = formData.get('symbol') as string;
     if (newSymbol) {
       setSymbol(newSymbol.toUpperCase());
     }
@@ -117,18 +119,26 @@ function ChartContent() {
 
       <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
         <div className="flex flex-wrap gap-4 items-end">
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Trading Pair
-            </label>
-            <SymbolAutocomplete
-              value={symbol}
-              onChange={setSymbol}
-              onSelect={handleSymbolSubmit}
-              placeholder="e.g., BTC/USDT"
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          <form onSubmit={handleSymbolChange} className="flex gap-2 flex-1 min-w-[200px]">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Trading Pair
+              </label>
+              <input
+                type="text"
+                name="symbol"
+                defaultValue={symbol}
+                placeholder="e.g., BTC/USDT"
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <button
+              type="submit"
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition mt-auto"
+            >
+              Load
+            </button>
+          </form>
 
           <div className="flex-1 min-w-[200px]">
             <label className="block text-sm font-medium text-gray-300 mb-2">
