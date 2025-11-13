@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import SymbolAutocomplete from '@/components/SymbolAutocomplete';
 
 interface WatchlistItem {
   id: string;
@@ -41,8 +42,8 @@ export default function WatchlistPage() {
     }
   };
 
-  const handleAddSymbol = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddSymbol = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setError('');
     setAdding(true);
 
@@ -134,6 +135,12 @@ export default function WatchlistPage() {
     router.push(`/dashboard/chart?symbol=${symbol}`);
   };
 
+  const handleSymbolSelect = (symbol: string) => {
+    setNewSymbol(symbol);
+    // Optionally trigger add immediately
+    // handleAddSymbol();
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -158,11 +165,11 @@ export default function WatchlistPage() {
         <form onSubmit={handleAddSymbol} className="space-y-4">
           <div className="flex gap-4">
             <div className="flex-1">
-              <input
-                type="text"
+              <SymbolAutocomplete
                 value={newSymbol}
-                onChange={(e) => setNewSymbol(e.target.value)}
-                placeholder="e.g., BTCUSDT, ETHUSDT"
+                onChange={setNewSymbol}
+                onSelect={handleSymbolSelect}
+                placeholder="e.g., BTC/USDT, ETH/USDT"
                 className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
