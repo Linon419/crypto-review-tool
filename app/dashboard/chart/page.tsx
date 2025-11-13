@@ -19,6 +19,11 @@ interface Settings {
   publishTime: string;
 }
 
+interface WatchlistItem {
+  id: string;
+  symbol: string;
+}
+
 function ChartContent() {
   const searchParams = useSearchParams();
   const initialSymbol = searchParams.get('symbol') || 'BTC/USDT';
@@ -34,6 +39,8 @@ function ChartContent() {
   const [showRSI, setShowRSI] = useState(false);
   const [showMACD, setShowMACD] = useState(false);
   const [showBB, setShowBB] = useState(false);
+  const [showWatchlist, setShowWatchlist] = useState(true);
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -44,6 +51,10 @@ function ChartContent() {
     };
     loadData();
   }, [symbol, timeframe]);
+
+  useEffect(() => {
+    fetchWatchlist();
+  }, []);
 
   const fetchChartData = async (currentSettings: Settings | null = null) => {
     setLoading(true);
@@ -106,6 +117,18 @@ function ChartContent() {
     }
   };
 
+  const fetchWatchlist = async () => {
+    try {
+      const response = await fetch('/api/watchlist');
+      if (response.ok) {
+        const data = await response.json();
+        setWatchlist(data.items || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch watchlist:', err);
+    }
+  };
+
   const handleSymbolChange = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -138,47 +161,52 @@ function ChartContent() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-white mb-2">Chart Analysis</h1>
-        <p className="text-gray-400">
-          View candlestick charts with technical indicators
-        </p>
+    <div className="h-screen flex flex-col">
+      {/* Header */}
+      <div className="flex-shrink-0 px-4 py-4 bg-gray-900 border-b border-gray-700">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Chart Analysis</h1>
+            <p className="text-gray-400 text-sm">
+              {symbol} - {timeframes.find(tf => tf.value === timeframe)?.label}
+            </p>
+          </div>
+          <button
+            onClick={() => setShowWatchlist(!showWatchlist)}
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition flex items-center gap-2"
+          >
+            {showWatchlist ? (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                </svg>
+                Hide Watchlist
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+                Show Watchlist
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
-      <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
-        <div className="flex flex-wrap gap-4 items-end">
-          <form onSubmit={handleSymbolChange} className="flex gap-2 flex-1 min-w-[200px]">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Trading Pair
-              </label>
-              <input
-                type="text"
-                name="symbol"
-                defaultValue={symbol}
-                placeholder="e.g., BTC/USDT"
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <button
-              type="submit"
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition mt-auto"
-            >
-              Load
-            </button>
-          </form>
-
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Timeframe
-            </label>
-            <div className="flex gap-2 flex-wrap">
+      {/* Main Content Area */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left: Chart Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Chart Controls */}
+          <div className="flex-shrink-0 bg-gray-800 border-b border-gray-700 p-4">
+            {/* Timeframe Selector */}
+            <div className="flex gap-2 mb-3">
               {timeframes.map((tf) => (
                 <button
                   key={tf.value}
                   onClick={() => setTimeframe(tf.value)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
+                  className={`px-3 py-1.5 rounded text-sm font-medium transition ${
                     timeframe === tf.value
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -188,103 +216,105 @@ function ChartContent() {
                 </button>
               ))}
             </div>
-          </div>
-        </div>
 
-        <div className="mt-4 flex flex-wrap gap-4 items-center">
-          <label className="text-sm font-medium text-gray-300">Indicators:</label>
-          <label className="flex items-center space-x-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showMA}
-              onChange={(e) => setShowMA(e.target.checked)}
-              className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-            />
-            <span className="text-sm text-gray-300">MA(20)</span>
-          </label>
-          <label className="flex items-center space-x-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showEMA}
-              onChange={(e) => setShowEMA(e.target.checked)}
-              className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-            />
-            <span className="text-sm text-gray-300">EMA(20)</span>
-          </label>
-          <label className="flex items-center space-x-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showBB}
-              onChange={(e) => setShowBB(e.target.checked)}
-              className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-            />
-            <span className="text-sm text-gray-300">Bollinger Bands</span>
-          </label>
-          <label className="flex items-center space-x-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showRSI}
-              onChange={(e) => setShowRSI(e.target.checked)}
-              className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-            />
-            <span className="text-sm text-gray-300">RSI(14)</span>
-          </label>
-          <label className="flex items-center space-x-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showMACD}
-              onChange={(e) => setShowMACD(e.target.checked)}
-              className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-            />
-            <span className="text-sm text-gray-300">MACD</span>
-          </label>
-        </div>
-
-        {settings && (
-          <div className="mt-4 p-3 bg-gray-700 rounded-lg border border-gray-600">
-            <p className="text-sm text-gray-300">
-              <span className="font-semibold capitalize">{settings.zoneType}</span> zone at{' '}
-              <span className="text-blue-400 font-bold">${settings.zonePrice}</span>
-            </p>
-          </div>
-        )}
-      </div>
-
-      <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-        {loading && (
-          <div className="flex items-center justify-center h-[500px]">
-            <div className="text-white text-xl">Loading chart...</div>
-          </div>
-        )}
-
-        {error && (
-          <div className="flex items-center justify-center h-[500px]">
-            <div className="text-center">
-              <p className="text-red-500 text-xl mb-2">Error loading chart</p>
-              <p className="text-gray-400">{error}</p>
+            {/* Indicators */}
+            <div className="flex flex-wrap gap-3 items-center">
+              <span className="text-xs font-medium text-gray-400">Indicators:</span>
+              {[
+                { key: 'MA', label: 'MA(20)', checked: showMA, onChange: setShowMA },
+                { key: 'EMA', label: 'EMA(20)', checked: showEMA, onChange: setShowEMA },
+                { key: 'BB', label: 'BB', checked: showBB, onChange: setShowBB },
+                { key: 'RSI', label: 'RSI', checked: showRSI, onChange: setShowRSI },
+                { key: 'MACD', label: 'MACD', checked: showMACD, onChange: setShowMACD },
+              ].map(ind => (
+                <label key={ind.key} className="flex items-center space-x-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={ind.checked}
+                    onChange={(e) => ind.onChange(e.target.checked)}
+                    className="w-3.5 h-3.5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-xs text-gray-300">{ind.label}</span>
+                </label>
+              ))}
             </div>
+
+            {settings && (
+              <div className="mt-3 p-2 bg-gray-700 rounded text-xs text-gray-300">
+                <span className="font-semibold capitalize">{settings.zoneType}</span> zone:
+                <span className="text-blue-400 font-bold ml-1">${settings.zonePrice}</span>
+              </div>
+            )}
           </div>
-        )}
 
-        {!loading && !error && data.length > 0 && (
-          <CandlestickChart
-            data={data}
-            {...getSupportResistance()}
-            showMA={showMA}
-            showEMA={showEMA}
-            showRSI={showRSI}
-            showMACD={showMACD}
-            showBB={showBB}
-          />
-        )}
+          {/* Chart Display */}
+          <div className="flex-1 overflow-hidden bg-gray-900 p-4">
+            {loading && (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-white text-xl">Loading chart...</div>
+              </div>
+            )}
 
-        {!loading && !error && data.length === 0 && (
-          <div className="flex items-center justify-center h-[500px]">
-            <div className="text-center">
-              <p className="text-gray-400">No data available</p>
-              <p className="text-gray-500 text-sm mt-2">
-                Enter a valid trading pair to view the chart
-              </p>
+            {error && (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <p className="text-red-500 text-xl mb-2">Error loading chart</p>
+                  <p className="text-gray-400">{error}</p>
+                </div>
+              </div>
+            )}
+
+            {!loading && !error && data.length > 0 && (
+              <CandlestickChart
+                data={data}
+                {...getSupportResistance()}
+                showMA={showMA}
+                showEMA={showEMA}
+                showRSI={showRSI}
+                showMACD={showMACD}
+                showBB={showBB}
+              />
+            )}
+
+            {!loading && !error && data.length === 0 && (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <p className="text-gray-400">No data available</p>
+                  <p className="text-gray-500 text-sm mt-2">
+                    Select a symbol from watchlist
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right: Watchlist Panel */}
+        {showWatchlist && (
+          <div className="w-80 flex-shrink-0 bg-gray-800 border-l border-gray-700 flex flex-col">
+            <div className="flex-shrink-0 p-4 border-b border-gray-700">
+              <h2 className="text-lg font-semibold text-white">Watchlist</h2>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {watchlist.length === 0 ? (
+                <div className="p-4 text-center text-gray-400 text-sm">
+                  No symbols in watchlist
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-700">
+                  {watchlist.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setSymbol(item.symbol)}
+                      className={`w-full p-4 text-left hover:bg-gray-700 transition ${
+                        symbol === item.symbol ? 'bg-gray-700' : ''
+                      }`}
+                    >
+                      <div className="font-medium text-white">{item.symbol}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
