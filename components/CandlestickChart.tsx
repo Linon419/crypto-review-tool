@@ -434,21 +434,24 @@ export default function CandlestickChart({
   }, [data, supportLevel, resistanceLevel, showMA, showEMA, showRSI, showMACD, showBB, publishTime]);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 pb-4">
       <div
         ref={chartContainerRef}
         className="w-full bg-gray-800 rounded-lg border border-gray-700"
+        style={{ paddingBottom: '40px' }}
       />
       {showRSI && (
         <div
           ref={rsiContainerRef}
           className="w-full bg-gray-800 rounded-lg border border-gray-700"
+          style={{ paddingBottom: '40px' }}
         />
       )}
       {showMACD && (
         <div
           ref={macdContainerRef}
           className="w-full bg-gray-800 rounded-lg border border-gray-700"
+          style={{ paddingBottom: '40px' }}
         />
       )}
     </div>

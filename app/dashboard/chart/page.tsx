@@ -248,7 +248,7 @@ function ChartContent() {
           </div>
 
           {/* Chart Display */}
-          <div className="flex-1 overflow-hidden bg-gray-900 p-4">
+          <div className="flex-1 overflow-auto bg-gray-900 p-4">
             {loading && (
               <div className="flex items-center justify-center h-full">
                 <div className="text-white text-xl">Loading chart...</div>
