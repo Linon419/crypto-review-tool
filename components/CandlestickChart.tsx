@@ -22,6 +22,7 @@ interface ChartProps {
   showRSI?: boolean;
   showMACD?: boolean;
   showBB?: boolean;
+  publishTime?: string;
 }
 
 export default function CandlestickChart({
@@ -33,6 +34,7 @@ export default function CandlestickChart({
   showRSI = false,
   showMACD = false,
   showBB = false,
+  publishTime,
 }: ChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const rsiContainerRef = useRef<HTMLDivElement>(null);
@@ -91,6 +93,32 @@ export default function CandlestickChart({
 
     candlestickSeriesRef.current = candlestickSeries;
     candlestickSeries.setData(data);
+
+    // Add Publish Time marker
+    if (publishTime) {
+      try {
+        const publishTimestamp = Math.floor(new Date(publishTime).getTime() / 1000);
+        const publishDate = new Date(publishTime);
+        const formattedTime = publishDate.toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+
+        candlestickSeries.setMarkers([
+          {
+            time: publishTimestamp,
+            position: 'belowBar',
+            color: '#3b82f6',
+            shape: 'arrowUp',
+            text: `Publish: ${formattedTime}`,
+          },
+        ]);
+      } catch (error) {
+        console.error('Failed to add publish time marker:', error);
+      }
+    }
 
     // Add MA (20-period)
     if (showMA) {
@@ -391,7 +419,7 @@ export default function CandlestickChart({
         macdChartRef.current = null;
       }
     };
-  }, [data, supportLevel, resistanceLevel, showMA, showEMA, showRSI, showMACD, showBB]);
+  }, [data, supportLevel, resistanceLevel, showMA, showEMA, showRSI, showMACD, showBB, publishTime]);
 
   return (
     <div className="space-y-2">

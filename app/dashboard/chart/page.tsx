@@ -103,9 +103,14 @@ function ChartContent() {
   const getSupportResistance = () => {
     if (!settings) return {};
 
-    return settings.zoneType === 'support'
+    const zoneProps = settings.zoneType === 'support'
       ? { supportLevel: settings.zonePrice }
       : { resistanceLevel: settings.zonePrice };
+
+    return {
+      ...zoneProps,
+      publishTime: settings.publishTime,
+    };
   };
 
   return (
