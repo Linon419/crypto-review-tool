@@ -36,11 +36,16 @@ function ChartContent() {
   const [showBB, setShowBB] = useState(false);
 
   useEffect(() => {
-    fetchChartData();
-    fetchSettings();
+    const loadData = async () => {
+      // First load settings
+      const loadedSettings = await fetchSettings();
+      // Then load chart data with the loaded settings
+      await fetchChartData(loadedSettings);
+    };
+    loadData();
   }, [symbol, timeframe]);
 
-  const fetchChartData = async () => {
+  const fetchChartData = async (currentSettings: Settings | null = null) => {
     setLoading(true);
     setError('');
 
@@ -55,7 +60,37 @@ function ChartContent() {
         throw new Error(result.error || 'Failed to fetch chart data');
       }
 
-      setData(result.data);
+      let chartData = result.data;
+
+      // Use passed settings or state settings
+      const settingsToUse = currentSettings || settings;
+
+      // Filter data based on publish time if settings exist
+      if (settingsToUse?.publishTime) {
+        const publishDate = new Date(settingsToUse.publishTime);
+        const startTime = new Date(publishDate);
+        startTime.setDate(startTime.getDate() - 1); // 1 day before
+        const endTime = new Date(publishDate);
+        endTime.setDate(endTime.getDate() + 4); // 4 days after
+
+        const startTimestamp = Math.floor(startTime.getTime() / 1000);
+        const endTimestamp = Math.floor(endTime.getTime() / 1000);
+
+        console.log('Filtering data based on publish time:', {
+          publishTime: settingsToUse.publishTime,
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          originalDataLength: chartData.length,
+        });
+
+        chartData = chartData.filter((candle: CandleData) =>
+          candle.time >= startTimestamp && candle.time <= endTimestamp
+        );
+
+        console.log('Filtered data length:', chartData.length);
+      }
+
+      setData(chartData);
     } catch (err: any) {
       setError(err.message || 'Failed to load chart data');
       setData([]);
@@ -64,7 +99,7 @@ function ChartContent() {
     }
   };
 
-  const fetchSettings = async () => {
+  const fetchSettings = async (): Promise<Settings | null> => {
     try {
       // Convert symbol format (BTC/USDT -> BTCUSDT)
       const normalizedSymbol = symbol.replace('/', '');
@@ -73,12 +108,15 @@ function ChartContent() {
       if (response.ok) {
         const result = await response.json();
         setSettings(result);
+        return result;
       } else {
         setSettings(null);
+        return null;
       }
     } catch (err) {
       console.error('Failed to fetch settings:', err);
       setSettings(null);
+      return null;
     }
   };
 
