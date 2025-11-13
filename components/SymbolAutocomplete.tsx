@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface SymbolAutocompleteProps {
   value: string;
@@ -37,32 +37,34 @@ export default function SymbolAutocomplete({
     };
   }, []);
 
+  const fetchSuggestions = useCallback(async () => {
+    if (value.length < 1) {
+      setSuggestions([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/symbols?q=${encodeURIComponent(value)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSuggestions(data.symbols || []);
+        setShowSuggestions(true);
+        setSelectedIndex(-1);
+      } else {
+        console.error('API response not OK:', response.status);
+      }
+    } catch (error) {
+      console.error('Failed to fetch suggestions:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [value]);
+
   useEffect(() => {
-    const fetchSuggestions = async () => {
-      if (value.length < 1) {
-        setSuggestions([]);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const response = await fetch(`/api/symbols?q=${encodeURIComponent(value)}`);
-        if (response.ok) {
-          const data = await response.json();
-          setSuggestions(data.symbols || []);
-          setShowSuggestions(true);
-          setSelectedIndex(-1);
-        }
-      } catch (error) {
-        console.error('Failed to fetch suggestions:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     const debounceTimer = setTimeout(fetchSuggestions, 300);
     return () => clearTimeout(debounceTimer);
-  }, [value]);
+  }, [fetchSuggestions]);
 
   const handleSelect = (symbol: string) => {
     onChange(symbol);
@@ -99,6 +101,18 @@ export default function SymbolAutocomplete({
     }
   };
 
+  const handleFocus = async () => {
+    if (value.length >= 1) {
+      // If we already have suggestions, just show them
+      if (suggestions.length > 0) {
+        setShowSuggestions(true);
+      } else if (!loading) {
+        // Otherwise, fetch new suggestions
+        await fetchSuggestions();
+      }
+    }
+  };
+
   return (
     <div ref={wrapperRef} className="relative">
       <input
@@ -107,38 +121,40 @@ export default function SymbolAutocomplete({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
-        onFocus={() => value.length >= 1 && setShowSuggestions(true)}
+        onFocus={handleFocus}
         placeholder={placeholder}
         className={className}
         autoComplete="off"
       />
 
-      {showSuggestions && (suggestions.length > 0 || loading) && (
+      {showSuggestions && suggestions.length > 0 && !loading && (
         <div className="absolute z-50 w-full mt-1 bg-gray-700 border border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-          {loading ? (
-            <div className="px-4 py-3 text-sm text-gray-400">Loading...</div>
-          ) : (
-            suggestions.map((symbol, index) => (
-              <button
-                key={symbol}
-                type="button"
-                onClick={() => handleSelect(symbol)}
-                className={`w-full px-4 py-2 text-left text-sm transition ${
-                  index === selectedIndex
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-200 hover:bg-gray-600'
-                }`}
-                onMouseEnter={() => setSelectedIndex(index)}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{symbol}</span>
-                  {symbol.endsWith('/USDT') && (
-                    <span className="text-xs text-gray-400">USDT</span>
-                  )}
-                </div>
-              </button>
-            ))
-          )}
+          {suggestions.map((symbol, index) => (
+            <button
+              key={symbol}
+              type="button"
+              onClick={() => handleSelect(symbol)}
+              className={`w-full px-4 py-2 text-left text-sm transition ${
+                index === selectedIndex
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-200 hover:bg-gray-600'
+              }`}
+              onMouseEnter={() => setSelectedIndex(index)}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-medium">{symbol}</span>
+                {symbol.endsWith('/USDT') && (
+                  <span className="text-xs text-gray-400">USDT</span>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {loading && value.length >= 1 && (
+        <div className="absolute z-50 w-full mt-1 bg-gray-700 border border-gray-600 rounded-lg shadow-lg px-4 py-3">
+          <div className="text-sm text-gray-400">Loading...</div>
         </div>
       )}
     </div>
