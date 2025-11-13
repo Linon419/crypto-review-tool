@@ -7,6 +7,7 @@ export async function GET(request: Request) {
     const symbol = searchParams.get('symbol');
     const timeframe = searchParams.get('timeframe') || '1h';
     const limit = parseInt(searchParams.get('limit') || '500');
+    const since = searchParams.get('since'); // Start time in milliseconds
 
     if (!symbol) {
       return NextResponse.json(
@@ -20,8 +21,9 @@ export async function GET(request: Request) {
       enableRateLimit: true,
     });
 
-    // Fetch OHLCV data
-    const ohlcv = await exchange.fetchOHLCV(symbol, timeframe, undefined, limit);
+    // Fetch OHLCV data with optional start time
+    const sinceTimestamp = since ? parseInt(since) : undefined;
+    const ohlcv = await exchange.fetchOHLCV(symbol, timeframe, sinceTimestamp, limit);
 
     // Format data for frontend
     const formattedData = ohlcv.map((candle) => ({

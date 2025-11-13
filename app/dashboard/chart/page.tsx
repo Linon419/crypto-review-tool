@@ -50,10 +50,48 @@ function ChartContent() {
     setError('');
 
     try {
-      const response = await fetch(
-        `/api/klines?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}&limit=500`
-      );
+      // Use passed settings or state settings
+      const settingsToUse = currentSettings || settings;
 
+      // Calculate required data points and start time based on publish time
+      let apiUrl = `/api/klines?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}`;
+
+      if (settingsToUse?.publishTime) {
+        const publishDate = new Date(settingsToUse.publishTime);
+        const startTime = new Date(publishDate);
+        startTime.setDate(startTime.getDate() - 1); // 1 day before
+
+        // Calculate required limit based on timeframe (5 days total)
+        const timeframeToMinutes: { [key: string]: number } = {
+          '1m': 1,
+          '5m': 5,
+          '15m': 15,
+          '1h': 60,
+          '4h': 240,
+          '1d': 1440,
+        };
+
+        const minutesPerCandle = timeframeToMinutes[timeframe] || 60;
+        const totalMinutes = 5 * 24 * 60; // 5 days in minutes
+        const requiredLimit = Math.ceil(totalMinutes / minutesPerCandle);
+
+        // Binance limit is usually max 1000-1500, so cap it
+        const limit = Math.min(requiredLimit, 1500);
+
+        apiUrl += `&limit=${limit}&since=${startTime.getTime()}`;
+
+        console.log('Fetching data with publish time:', {
+          publishTime: settingsToUse.publishTime,
+          startTime: startTime.toISOString(),
+          timeframe,
+          requiredLimit,
+          actualLimit: limit,
+        });
+      } else {
+        apiUrl += '&limit=500';
+      }
+
+      const response = await fetch(apiUrl);
       const result = await response.json();
 
       if (!response.ok) {
@@ -62,32 +100,28 @@ function ChartContent() {
 
       let chartData = result.data;
 
-      // Use passed settings or state settings
-      const settingsToUse = currentSettings || settings;
-
-      // Filter data based on publish time if settings exist
+      // Filter data to ensure it's within the 5-day window if publish time exists
       if (settingsToUse?.publishTime) {
         const publishDate = new Date(settingsToUse.publishTime);
         const startTime = new Date(publishDate);
-        startTime.setDate(startTime.getDate() - 1); // 1 day before
+        startTime.setDate(startTime.getDate() - 1);
         const endTime = new Date(publishDate);
-        endTime.setDate(endTime.getDate() + 4); // 4 days after
+        endTime.setDate(endTime.getDate() + 4);
 
         const startTimestamp = Math.floor(startTime.getTime() / 1000);
         const endTimestamp = Math.floor(endTime.getTime() / 1000);
-
-        console.log('Filtering data based on publish time:', {
-          publishTime: settingsToUse.publishTime,
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
-          originalDataLength: chartData.length,
-        });
 
         chartData = chartData.filter((candle: CandleData) =>
           candle.time >= startTimestamp && candle.time <= endTimestamp
         );
 
-        console.log('Filtered data length:', chartData.length);
+        console.log('Filtered chart data:', {
+          dataRange: {
+            start: chartData[0] ? new Date(chartData[0].time * 1000).toISOString() : 'N/A',
+            end: chartData[chartData.length - 1] ? new Date(chartData[chartData.length - 1].time * 1000).toISOString() : 'N/A',
+          },
+          dataLength: chartData.length,
+        });
       }
 
       setData(chartData);
