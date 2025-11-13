@@ -122,7 +122,7 @@ function ChartContent() {
       const response = await fetch('/api/watchlist');
       if (response.ok) {
         const data = await response.json();
-        setWatchlist(data.items || []);
+        setWatchlist(data || []);
       }
     } catch (err) {
       console.error('Failed to fetch watchlist:', err);

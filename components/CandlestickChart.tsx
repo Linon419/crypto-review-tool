@@ -76,6 +76,7 @@ export default function CandlestickChart({
         borderColor: '#4b5563',
         timeVisible: true,
         secondsVisible: false,
+        visible: true,
       },
     });
 
@@ -239,7 +240,7 @@ export default function CandlestickChart({
           borderColor: '#4b5563',
           timeVisible: true,
           secondsVisible: false,
-          visible: false,
+          visible: true,
         },
       });
 
@@ -309,7 +310,7 @@ export default function CandlestickChart({
           borderColor: '#4b5563',
           timeVisible: true,
           secondsVisible: false,
-          visible: false,
+          visible: true,
         },
       });
 
