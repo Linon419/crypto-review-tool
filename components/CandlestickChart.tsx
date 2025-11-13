@@ -106,9 +106,20 @@ export default function CandlestickChart({
           minute: '2-digit',
         });
 
+        console.log('Publish Time Debug:', {
+          publishTime,
+          publishTimestamp,
+          publishDate: publishDate.toISOString(),
+          dataRange: {
+            start: new Date(data[0].time * 1000).toISOString(),
+            end: new Date(data[data.length - 1].time * 1000).toISOString(),
+          },
+          formattedTime,
+        });
+
         candlestickSeries.setMarkers([
           {
-            time: publishTimestamp,
+            time: publishTimestamp as any,
             position: 'belowBar',
             color: '#3b82f6',
             shape: 'arrowUp',
